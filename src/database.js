@@ -60,10 +60,16 @@ export class Database {
     const row = this.#database[table].find((record) => record.id === id);
 
     if (row) {
-      console.log("if update");
-      row;
+      if (data.markAsIncomplete) {
+        delete row.completed_at;
+        delete data.markAsIncomplete;
+      }
+
       let index = this.#database[table].indexOf(row);
+      // console.log(this.#database[table][index]);
+      console.log(data);
       this.#database[table][index] = { ...row, ...data };
+      // console.log(this.#database[table][index]);
       this.#persist();
       return this.#database[table][index];
     }
