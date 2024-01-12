@@ -1,39 +1,68 @@
-import fs from "node:fs/promises";
-import * as fsOld from "node:fs";
-import { Database } from "./database.js";
-import { randomUUID } from "node:crypto";
-import { buildRoutePath } from "./utils/build-route-path.js";
+import fs from 'node:fs/promises'
+import * as fsOld from 'node:fs'
+import { Database, databasePath } from './database.js'
+import { randomUUID } from 'node:crypto'
+import { buildRoutePath } from './utils/build-route-path.js'
 
-import { verifyTaskInDB } from "./utils/verify-in-db.js";
+import { verifyTaskInDB } from './utils/verify-in-db.js'
 
-const database = new Database();
+const database = new Database()
 export const routes = [
   {
-    method: "GET",
-    path: buildRoutePath("/tasks"),
+    method: 'OPTIONS',
+    path: buildRoutePath('/tasks'),
     handleBody: true,
     async action(req, res) {
-      const fileURL = new URL("./db.json", import.meta.url);
+      res.setHeader('Access-Control-Allow-Headers', '*')
+      return res.writeHead(200).write('Ok')
+    },
+  },
+  {
+    method: 'OPTIONS',
+    path: buildRoutePath('/tasks/:id'),
+    handleBody: true,
+    async action(req, res) {
+      res.setHeader('Access-Control-Allow-Headers', '*')
+      res.setHeader('Access-Control-Allow-Methods', '*')
+      return res.writeHead(200).write('Ok')
+    },
+  },
+  {
+    method: 'OPTIONS',
+    path: buildRoutePath('/tasks/:id/complete'),
+    handleBody: true,
+    async action(req, res) {
+      res.setHeader('Access-Control-Allow-Headers', '*')
+      res.setHeader('Access-Control-Allow-Methods', '*')
+      return res.writeHead(200).write('Ok')
+    },
+  },
+  {
+    method: 'GET',
+    path: buildRoutePath('/tasks'),
+    handleBody: true,
+    async action(req, res) {
+      const fileURL = new URL('./db.json', import.meta.url)
 
-      let fileExists = fsOld.existsSync(fileURL);
-      console.log(fileExists);
+      let fileExists = fsOld.existsSync(fileURL)
+      console.log(fileExists)
       if (fileExists) {
-        console.log("entrou no if");
+        console.log('entrou no if')
         const response = await fs.readFile(
-          "src/db.json",
+          'src/db.json',
           import.meta,
           (err) => {
             if (err) {
-              res.writeHead(404).write("Not found");
+              res.writeHead(404).write('Not found')
             } else {
-              Database.select("Tasks");
+              Database.select('Tasks')
             }
           }
-        );
+        )
 
-        res.end(response);
+        res.end(response)
       } else {
-        res.writeHead(404).write("Not found");
+        res.writeHead(404).write('Not found')
       }
     },
   },
@@ -46,22 +75,22 @@ export const routes = [
   //   },
   // },
   {
-    method: "POST",
-    path: buildRoutePath("/tasks"),
+    method: 'POST',
+    path: buildRoutePath('/tasks'),
     handleBody: true,
     action(req, res) {
-      const { title, description } = req.body;
+      const { title, description } = req.body
       if (title && description) {
         const task = {
           id: randomUUID(),
           title,
           description,
           created_at: new Date(),
-        };
-        database.insert("Tasks", task);
-        return res.end(JSON.stringify(task));
+        }
+        database.insert('Tasks', task)
+        return res.end(JSON.stringify(task))
       }
-      return res.end("Invalid");
+      return res.end('Invalid')
 
       // if (dbExists) {
       //   addData = `${body.title},${body.description};\n`;
@@ -85,69 +114,89 @@ export const routes = [
     },
   },
   {
-    method: "PUT",
-    path: buildRoutePath("/tasks/:id"),
+    method: 'PUT',
+    path: buildRoutePath('/tasks/:id'),
     handleBody: true,
     async action(req, res) {
-      const { id } = req.params;
-      const taskToUpdate = await verifyTaskInDB(id);
-      console.log(taskToUpdate);
+      const { id } = req.params
+      const taskToUpdate = await verifyTaskInDB(id)
+      console.log(taskToUpdate)
       // console.log("PUT");
       if (taskToUpdate) {
-        const body = req.body;
-        let update = {};
+        const body = req.body
+        let update = {}
         for (const key in body) {
           if (body[key]) {
-            update[key] = body[key];
+            update[key] = body[key]
           }
         }
-        update.update_at = new Date();
-        update = database.update("Tasks", id, update);
-        return res.end(JSON.stringify(update));
+        update.update_at = new Date()
+        update = database.update('Tasks', id, update)
+        return res.end(JSON.stringify(update))
       }
-      res.write("Task does not exist");
-      return res.end();
+      res.write('Task does not exist')
+      return res.end()
     },
   },
   {
-    method: "DELETE",
-    path: buildRoutePath("/tasks/:id"),
+    method: 'DELETE',
+    path: buildRoutePath('/tasks/:id'),
     handleBody: true,
     async action(req, res) {
-      const { id } = req.params;
+      const { id } = req.params
       // console.log("DELETE");
-      const taskToDelete = await verifyTaskInDB(id);
+      const taskToDelete = await verifyTaskInDB(id)
       if (taskToDelete) {
-        database.delete("Tasks", id);
-        return res.end(JSON.stringify(taskToDelete));
+        database.delete('Tasks', id)
+        return res.end(JSON.stringify(taskToDelete))
       }
-      res.write("Task does not exist");
-      return res.end();
+      res.write('Task does not exist')
+      return res.end()
     },
   },
   {
-    method: "PATCH",
-    path: buildRoutePath("/tasks/:id/complete"),
+    method: 'PATCH',
+    path: buildRoutePath('/tasks/:id/complete'),
     handleBody: true,
     async action(req, res) {
-      const { id } = req.params;
-      const taskToUpdate = await verifyTaskInDB(id);
+      const { id } = req.params
+      const taskToUpdate = await verifyTaskInDB(id)
       if (taskToUpdate) {
-        let update;
-        if (taskToUpdate["completed_at"]) {
-          delete taskToUpdate["completed_at"];
-          console.log("completed_at");
-          taskToUpdate.markAsIncomplete = true;
-          update = taskToUpdate;
-          update = database.update("Tasks", id, update);
-          return res.end(`Incomplete: {${JSON.stringify(update)}}`);
+        let update
+        if (taskToUpdate['completed_at']) {
+          delete taskToUpdate['completed_at']
+          console.log('completed_at')
+          taskToUpdate.markAsIncomplete = true
+          update = taskToUpdate
+          update = database.update('Tasks', id, update)
+          return res.end(`Incomplete: {${JSON.stringify(update)}}`)
         }
-        taskToUpdate["completed_at"] = new Date();
-        update = taskToUpdate;
-        update = database.update("Tasks", id, update);
-        return res.end(`Complete: {${JSON.stringify(update)}}`);
+        taskToUpdate['completed_at'] = new Date()
+        update = taskToUpdate
+        update = database.update('Tasks', id, update)
+        return res.end(`Complete: {${JSON.stringify(update)}}`)
       }
-      return res.end("Task does not exist");
+      return res.end('Task does not exist')
     },
   },
-];
+  {
+    method: 'GET',
+    path: buildRoutePath('/tasks/import'),
+    handleBody: true,
+    async action(req, res) {
+      const tasks = await fs.readFile(databasePath).then((data) => {
+        data = JSON.parse(data.toString())
+        return data['Tasks']
+      })
+      for await (let t of tasks) {
+        const { title, description } = t
+        const line = Buffer.from({ title, description })
+        const csvURL = new URL('tasks.csv', import.meta.url)
+        fs.appendFile(csvURL, line).then((r) => {
+          console.log(r)
+        })
+      }
+      return res.end(JSON.stringify(tasks))
+    },
+  },
+]
